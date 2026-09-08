@@ -90,15 +90,18 @@ export function convexHull(points: Point[]): Point[] {
   return lower.concat(upper);
 }
 
-/** Convex hull expanded around members so the region hugs people instead of filling a disk. */
-export function paddedHull(points: Point[], padding: number): Point[] {
-  if (points.length === 0) return [];
+export type Circle = Point & { r: number };
+
+/** Convex hull wrapped around discs, expanded by `padding`, so a region hugs whole buckets. */
+export function paddedHullOfCircles(circles: Circle[], padding: number): Point[] {
+  if (circles.length === 0) return [];
   const ring: Point[] = [];
-  const steps = 8;
-  for (const p of points) {
+  const steps = 16;
+  for (const c of circles) {
+    const rr = c.r + padding;
     for (let i = 0; i < steps; i++) {
       const a = (Math.PI * 2 * i) / steps;
-      ring.push({ x: p.x + Math.cos(a) * padding, y: p.y + Math.sin(a) * padding });
+      ring.push({ x: c.x + Math.cos(a) * rr, y: c.y + Math.sin(a) * rr });
     }
   }
   return convexHull(ring);

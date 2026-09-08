@@ -142,6 +142,11 @@ button.primary:hover {
   background: #334766;
 }
 
+.zoom-ui button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .zoom-ui button.on {
   color: #0e1218;
   background: #9eb6ff;

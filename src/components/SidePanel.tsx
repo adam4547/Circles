@@ -50,8 +50,8 @@ export default function SidePanel(props: Props) {
           aria-label="Workspace name"
         />
         <p>
-          Each dot's ring shows its groups; closer dots share more of them. Select someone, then
-          hover another person to see what the two share.
+          Each dot's ring shows its groups; people with the same groups share a cluster. Select
+          someone, then hover another person to see what the two share.
         </p>
       </header>
       <div className="panel-scroll">

@@ -1,6 +1,6 @@
 # Circles
 
-Circles shows how friend groups overlap. Each group is a colored circle. Each person is a dot. People who belong to the same mix of groups sit together in the overlap, and lines between people get thicker and brighter the more groups they share.
+Circles shows how friend groups overlap. Each group is a colored region. Each person is a dot. People who belong to the same mix of groups sit together in one cluster, and lines between people get thicker and brighter the more groups they share.
 
 It is a **desktop app**. There is no website, no login, and no server.
 
@@ -19,7 +19,9 @@ Windows may show a SmartScreen prompt the first time because the file is not a s
 - **New workspace:** pick a folder and file name in the save dialog. That file is your workspace. The canvas starts empty.
 - **Open file:** choose an existing `.circles.json` (or `.json`) workspace.
 - **Recent:** reopen a workspace you used before. Hide removes it from the list; Delete file removes it from disk.
-- **Move a group:** drag inside a group's shaded region. Groups have no fixed size; the region wraps whoever belongs to it.
+- **Clusters:** people with exactly the same set of groups share one cluster and are packed on fixed-spacing rings so names never overlap. Each group's shaded region wraps the clusters that belong to it.
+- **Move a group:** drag inside a group's shaded region to nudge it and see how the clusters follow. Nudges are saved, but the next Auto-adjust replaces them.
+- **Auto-adjust:** re-places every group from who belongs to it. Groups that share members pull together (a group entirely inside another nests against it); unrelated groups spread apart. This overwrites any dragged positions.
 - **Look around:** scroll to zoom, drag empty space to pan, or use **+ / − / 100% / Fit**.
 - **Normalize:** toggles how ties are weighted. Off, a line's weight is the raw number of shared groups. On, it is shared ÷ combined groups (Jaccard), so sharing a small group chat counts for more than sharing a large school. Affects line thickness, count badges (shown as a percentage), and "Closest to".
 - **See how connected someone is:** click a person on the canvas or in the side panel. Their shared-group lines stay bright; others fade.

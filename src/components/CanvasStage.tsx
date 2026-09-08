@@ -5,13 +5,14 @@ import {
   hullLabelAnchor,
   hullPath,
   jaccard,
-  paddedHull,
+  paddedHullOfCircles,
   ringSegmentPath,
   scoreEdge,
   sharedGroupCount,
   sharedGroupIds,
   unionGroupCount,
 } from "../geometry";
+import type { Bucket } from "../layout";
 import type { EdgeWeighting, Group, ViewTransform } from "../types";
 
 function shortName(name: string): string {
@@ -48,29 +49,36 @@ type GroupLabel = {
 type Props = {
   groups: Group[];
   people: PersonNode[];
+  buckets: Bucket[];
+  bucketOf: Map<string, string>;
   edges: Edge[];
   selectedId: string | null;
   view: ViewTransform;
   weighting: EdgeWeighting;
   onToggleWeighting: () => void;
+  onAutoAdjust: () => void;
   onViewChange: (view: ViewTransform) => void;
   onSelectPerson: (id: string | null) => void;
   onMoveGroup: (id: string, x: number, y: number) => void;
 };
 
 const EMPTY_GROUP_R = 30;
-const HULL_PAD = 26;
+/** Padding beyond a bucket's packed rings; leaves the dot ring and name inside the region. */
+const HULL_PAD = 30;
 const DOT_R = 8;
 const RING_R = 13;
 
 export default function CanvasStage({
   groups,
   people,
+  buckets,
+  bucketOf,
   edges,
   selectedId,
   view,
   weighting,
   onToggleWeighting,
+  onAutoAdjust,
   onViewChange,
   onSelectPerson,
   onMoveGroup,
@@ -81,6 +89,7 @@ export default function CanvasStage({
   const onViewChangeRef = useRef(onViewChange);
   const groupsRef = useRef(groups);
   const peopleRef = useRef(people);
+  const fitPending = useRef(false);
   viewRef.current = view;
   onViewChangeRef.current = onViewChange;
   groupsRef.current = groups;
@@ -100,13 +109,19 @@ export default function CanvasStage({
           y: people.reduce((s, p) => s + p.y, 0) / people.length,
         }
       : { x: 700, y: 410 };
-    const placed: { x: number; y: number; w: number }[] = [];
+    const placed: { left: number; right: number; y: number }[] = [];
+    const box = (label: GroupLabel, w: number) =>
+      label.align === "start"
+        ? { left: label.x, right: label.x + w }
+        : label.align === "end"
+          ? { left: label.x - w, right: label.x }
+          : { left: label.x - w / 2, right: label.x + w / 2 };
     for (const group of groups) {
-      const members = people.filter((p) => p.groupIds.includes(group.id));
-      const hull = paddedHull(
-        members.map((p) => ({ x: p.x, y: p.y })),
-        HULL_PAD,
-      );
+      // Regions wrap whole buckets, so they stay smooth and never cut through a cluster.
+      const discs = buckets
+        .filter((b) => b.groupIds.includes(group.id))
+        .map((b) => ({ x: b.x, y: b.y, r: b.packR }));
+      const hull = paddedHullOfCircles(discs, HULL_PAD);
       if (hull.length === 0) continue;
       const anchor = hullLabelAnchor(hull, center, 10);
       const label: GroupLabel = {
@@ -114,20 +129,22 @@ export default function CanvasStage({
         y: anchor.y + (anchor.dy > 0.35 ? 10 : anchor.dy < -0.35 ? -2 : 4),
         align: anchor.dx > 0.35 ? "start" : anchor.dx < -0.35 ? "end" : "middle",
       };
-      // Labels of overlapping groups would stack on the same spot; stagger them outward.
+      // Labels of overlapping groups would stack on the same spot; stagger them outward,
+      // away from the crowd, until the text box is clear of every label already placed.
       const w = group.name.length * 7 + 12;
-      for (let guard = 0; guard < 12; guard++) {
+      const mine = box(label, w);
+      for (let guard = 0; guard < 16; guard++) {
         const clash = placed.find(
-          (l) => Math.abs(l.x - label.x) < (l.w + w) / 2 && Math.abs(l.y - label.y) < 16,
+          (l) => l.left < mine.right && l.right > mine.left && Math.abs(l.y - label.y) < 15,
         );
         if (!clash) break;
-        label.y = anchor.dy >= 0 ? clash.y + 16 : clash.y - 16;
+        label.y = anchor.dy >= 0 ? clash.y + 15 : clash.y - 15;
       }
-      placed.push({ x: label.x, y: label.y, w });
+      placed.push({ ...mine, y: label.y });
       map.set(group.id, { path: hullPath(hull), label });
     }
     return map;
-  }, [groups, people]);
+  }, [groups, people, buckets]);
 
   // Hovering wins over selection for what we spotlight; selection persists as the anchor of a pair.
   const focusId = hoveredId ?? selectedId;
@@ -139,22 +156,25 @@ export default function CanvasStage({
     selectedPerson && pairPerson ? sharedGroupIds(selectedPerson.groupIds, pairPerson.groupIds) : [];
 
   // Quiet by default: only strong ties get a string. Focus a person to see all of theirs.
+  // People in the same bucket share every group already; the bucket says that, so their strings
+  // are hidden until one of them is focused.
   const visibleEdges = useMemo(() => {
     const isPair = (edge: Edge) =>
       Boolean(pairId) &&
       ((edge.a === selectedId && edge.b === pairId) || (edge.b === selectedId && edge.a === pairId));
+    const sameBucket = (edge: Edge) => bucketOf.get(edge.a) === bucketOf.get(edge.b);
     return edges
       .map((edge) => ({ ...edge, score: scoreEdge(edge.shared, edge.union, weighting) }))
       .filter((edge) => {
         if (!pos.has(edge.a) || !pos.has(edge.b)) return false;
         if (focusId) return edge.a === focusId || edge.b === focusId || isPair(edge);
-        return edge.score.showAtRest;
+        return edge.score.showAtRest && !sameBucket(edge);
       })
       // Weak ties first, the hovered pair last, so the important string is drawn on top.
       .sort(
         (p, q) => Number(isPair(p)) - Number(isPair(q)) || p.score.strength - q.score.strength,
       );
-  }, [edges, pos, focusId, pairId, selectedId, weighting]);
+  }, [edges, pos, bucketOf, focusId, pairId, selectedId, weighting]);
 
   useEffect(() => {
     const svg = svgRef.current;
@@ -243,6 +263,19 @@ export default function CanvasStage({
       y: height / 2 - k * cy,
       k,
     });
+  }
+
+  // Auto-adjust moves everything; once the new positions have rendered, frame them.
+  useEffect(() => {
+    if (!fitPending.current) return;
+    fitPending.current = false;
+    fitToContent();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groups, people]);
+
+  function runAutoAdjust() {
+    fitPending.current = true;
+    onAutoAdjust();
   }
 
   const zoomPercent = Math.round(view.k * 100);
@@ -493,6 +526,14 @@ export default function CanvasStage({
         </button>
         <span className="zoom-label">{zoomPercent}%</span>
         <span className="divider" />
+        <button
+          type="button"
+          title="Re-place every group from who belongs to it. Overwrites dragged positions."
+          onClick={runAutoAdjust}
+          disabled={groups.length === 0}
+        >
+          Auto-adjust
+        </button>
         <button
           type="button"
           className={weighting === "jaccard" ? "on" : undefined}

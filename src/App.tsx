@@ -4,6 +4,7 @@ import HomeScreen from "./components/HomeScreen";
 import SidePanel from "./components/SidePanel";
 import { exampleData, GROUP_COLORS } from "./example";
 import { sharedGroupCount, unionGroupCount } from "./geometry";
+import { autoAdjustGroups } from "./groupLayout";
 import { layoutPeople } from "./layout";
 import type {
   EdgeWeighting,
@@ -116,15 +117,15 @@ export default function App() {
     return () => window.clearTimeout(handle);
   }, [open, filePath, workspaceId, workspaceName, groups, people, view]);
 
-  const positions = useMemo(() => layoutPeople(people, groups), [people, groups]);
+  const layout = useMemo(() => layoutPeople(people, groups), [people, groups]);
 
   const placedPeople = useMemo(
     () =>
       people.map((person) => ({
         ...person,
-        ...(positions.get(person.id) ?? { x: 70, y: 70 }),
+        ...(layout.positions.get(person.id) ?? { x: 70, y: 70 }),
       })),
-    [people, positions],
+    [people, layout],
   );
 
   const edges = useMemo(() => {
@@ -231,9 +232,14 @@ export default function App() {
   function loadExample() {
     if (groups.length > 0 || people.length > 0) return;
     const example = exampleData();
-    setGroups(example.groups);
+    setGroups(autoAdjustGroups(example.groups, example.people));
     setPeople(example.people);
     setSelectedId(null);
+  }
+
+  /** Overwrites every anchor, including hand-dragged ones. Dragging is a nudge, not a pin. */
+  function autoAdjust() {
+    setGroups((prev) => autoAdjustGroups(prev, people));
   }
 
   if (!open) {
@@ -270,11 +276,14 @@ export default function App() {
           key={filePath}
           groups={groups}
           people={placedPeople}
+          buckets={layout.buckets}
+          bucketOf={layout.bucketOf}
           edges={edges}
           selectedId={selectedId}
           view={view}
           weighting={weighting}
           onToggleWeighting={() => setWeighting((w) => (w === "raw" ? "jaccard" : "raw"))}
+          onAutoAdjust={autoAdjust}
           onViewChange={setView}
           onSelectPerson={setSelectedId}
           onMoveGroup={(id, x, y) =>
@@ -282,9 +291,9 @@ export default function App() {
           }
         />
         <p className="hint">
-          People who share more groups sit closer; the ring around each dot shows their groups.
-          Hover or click a person to see their ties, then hover another to compare the pair. Drag a
-          group to move it.
+          People with the exact same groups share a cluster; the ring around each dot shows their
+          groups. Hover or click a person to see their ties, then hover another to compare the
+          pair. Drag a group to nudge it, or Auto-adjust to re-place every group from membership.
         </p>
         {error ? <p className="save-error">{error}</p> : null}
       </main>
