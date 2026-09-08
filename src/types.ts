@@ -24,20 +24,23 @@ export type ViewTransform = {
   k: number;
 };
 
-export type Workspace = {
-  version: 1;
+export type WorkspaceMeta = {
   id: string;
   name: string;
   updatedAt: string;
+  groupCount?: number;
+  personCount?: number;
+};
+
+export type Workspace = WorkspaceMeta & {
+  version: 1;
   groups: Group[];
   people: Person[];
   view: ViewTransform;
 };
 
-export type RecentWorkspace = {
+export type RecentWorkspace = WorkspaceMeta & {
   filePath: string;
-  name: string;
-  updatedAt: string;
   groupCount: number;
   personCount: number;
 };

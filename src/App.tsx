@@ -6,9 +6,17 @@ import { sharedGroupCount } from "./geometry";
 import { layoutPeople } from "./layout";
 import { GROUP_COLORS } from "./seed";
 import type { Group, Person, RecentWorkspace, ViewTransform, Workspace } from "./types";
+import {
+  createWorkspace as createWorkspaceFile,
+  deleteWorkspace,
+  isDesktopApp,
+  listWorkspaces,
+  loadWorkspace,
+  openWorkspace as openWorkspaceFile,
+  removeRecent,
+  saveWorkspace,
+} from "./workspaceStore";
 import "./App.css";
-
-const api = window.circles;
 
 function buildWorkspace(
   id: string,
@@ -46,13 +54,15 @@ export default function App() {
   const open = Boolean(filePath && workspaceId);
 
   useEffect(() => {
-    if (!api) {
+    if (!isDesktopApp()) {
       setError("Open Circles.exe to create and save workspaces.");
       return;
     }
-    api.listRecents().then(setRecents).catch((err: unknown) => {
-      setError(err instanceof Error ? err.message : "Could not load recent workspaces.");
-    });
+    listWorkspaces()
+      .then(setRecents)
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : "Could not load recent workspaces.");
+      });
   }, []);
 
   function applyOpened(file: string, workspace: Workspace) {
@@ -68,19 +78,19 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (!open || !api || !filePath || !workspaceId) return;
+    if (!open || !isDesktopApp() || !filePath || !workspaceId) return;
     if (skipSave.current) {
       skipSave.current = false;
       return;
     }
     const handle = window.setTimeout(() => {
       const payload = buildWorkspace(workspaceId, workspaceName.trim() || "Untitled", groups, people, view);
-      api
-        .saveWorkspace(filePath, payload)
+      saveWorkspace(filePath, payload)
         .then(({ workspace }) => {
           setRecents((prev) => {
             const entry = {
               filePath,
+              id: workspace.id,
               name: workspace.name,
               updatedAt: workspace.updatedAt,
               groupCount: workspace.groups.length,
@@ -121,44 +131,44 @@ export default function App() {
   }, [people]);
 
   async function createWorkspace() {
-    if (!api) return;
+    if (!isDesktopApp()) return;
     try {
-      const result = await api.createWorkspace();
+      const result = await createWorkspaceFile();
       if (result.canceled) return;
       applyOpened(result.filePath, result.workspace);
-      setRecents(await api.listRecents());
+      setRecents(await listWorkspaces());
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Could not create workspace.");
     }
   }
 
   async function openWorkspace() {
-    if (!api) return;
+    if (!isDesktopApp()) return;
     try {
-      const result = await api.openWorkspace();
+      const result = await openWorkspaceFile();
       if (result.canceled) return;
       applyOpened(result.filePath, result.workspace);
-      setRecents(await api.listRecents());
+      setRecents(await listWorkspaces());
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Could not open workspace.");
     }
   }
 
   async function openRecent(path: string) {
-    if (!api) return;
+    if (!isDesktopApp()) return;
     try {
-      const result = await api.loadWorkspace(path);
+      const result = await loadWorkspace(path);
       applyOpened(result.filePath, result.workspace);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Could not open that file.");
-      setRecents(await api.listRecents());
+      setRecents(await listWorkspaces());
     }
   }
 
   async function closeWorkspace() {
-    if (api && filePath && workspaceId) {
+    if (isDesktopApp() && filePath && workspaceId) {
       try {
-        await api.saveWorkspace(
+        await saveWorkspace(
           filePath,
           buildWorkspace(workspaceId, workspaceName.trim() || "Untitled", groups, people, view),
         );
@@ -170,7 +180,7 @@ export default function App() {
     setFilePath(null);
     setWorkspaceId(null);
     setError(null);
-    if (api) setRecents(await api.listRecents());
+    if (isDesktopApp()) setRecents(await listWorkspaces());
   }
 
   function addGroup() {
@@ -201,15 +211,15 @@ export default function App() {
         onOpen={openWorkspace}
         onOpenRecent={openRecent}
         onRemoveRecent={async (path) => {
-          if (!api) return;
-          setRecents(await api.removeRecent(path));
+          if (!isDesktopApp()) return;
+          setRecents(await removeRecent(path));
         }}
         onDeleteFile={async (path) => {
-          if (!api) return;
+          if (!isDesktopApp()) return;
           const ok = window.confirm("Delete this workspace file from disk?");
           if (!ok) return;
           try {
-            const { recents: next } = await api.deleteWorkspaceFile(path);
+            const { recents: next } = await deleteWorkspace(path);
             setRecents(next);
           } catch (err: unknown) {
             setError(err instanceof Error ? err.message : "Could not delete that file.");

@@ -58,6 +58,7 @@ async function rememberRecent(filePath, workspace) {
   const next = [
     {
       filePath,
+      id: workspace.id,
       name: workspace.name || nameFromPath(filePath),
       updatedAt: workspace.updatedAt,
       groupCount: workspace.groups.length,
