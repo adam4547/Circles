@@ -17,3 +17,27 @@ export type Point = {
   x: number;
   y: number;
 };
+
+export type ViewTransform = {
+  x: number;
+  y: number;
+  k: number;
+};
+
+export type Workspace = {
+  version: 1;
+  id: string;
+  name: string;
+  updatedAt: string;
+  groups: Group[];
+  people: Person[];
+  view: ViewTransform;
+};
+
+export type RecentWorkspace = {
+  filePath: string;
+  name: string;
+  updatedAt: string;
+  groupCount: number;
+  personCount: number;
+};

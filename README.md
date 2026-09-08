@@ -8,7 +8,7 @@ It is a **desktop app**. There is no website, no login, and no server.
 
 1. Get `Circles.exe` from a [GitHub Release](../../releases) for this project, or from whoever built the app for you.
 2. Double-click **Circles.exe**.
-3. A window opens with the circle canvas on the left and the Groups / People panel on the right.
+3. You start on a blank home screen. Choose **New workspace** or **Open file**.
 
 You do not need Node.js, a browser, or an internet connection. The file is portable: it does not install anything on your computer.
 
@@ -16,8 +16,12 @@ Windows may show a SmartScreen prompt the first time because the file is not a s
 
 ## How to use it
 
+- **New workspace:** pick a folder and file name in the save dialog. That file is your workspace. The canvas starts empty.
+- **Open file:** choose an existing `.circles.json` (or `.json`) workspace.
+- **Recent:** reopen a workspace you used before. Hide removes it from the list; Delete file removes it from disk.
 - **Move a group:** drag inside a colored circle.
 - **Resize a group:** drag the small handle on the lower-right rim of a circle.
+- **Look around:** scroll to zoom, drag empty space to pan, or use **+ / − / 100% / Fit**.
 - **See how connected someone is:** click a person on the canvas or in the side panel. Their shared-group lines stay bright; others fade.
 - **Add a group:** type a name, pick a color, click **Add**.
 - **Add a person:** type a name, click **Add**. New people start with no groups and appear in the upper-left until you assign groups.
@@ -25,7 +29,7 @@ Windows may show a SmartScreen prompt the first time because the file is not a s
 - **Change membership:** click a group chip under a person. A filled chip means they belong to that group.
 - **Delete:** use **Delete** on a group or person. Deleting a group also removes it from everyone’s memberships.
 
-Nothing is saved to a server. If you close the app, you get the built-in starter people and groups again next time.
+Edits save automatically to the file you chose. Closing the app does not lose that file.
 
 ## Build the executable (developers)
 

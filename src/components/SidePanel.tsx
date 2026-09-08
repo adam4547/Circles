@@ -1,6 +1,9 @@
 import type { Group, Person } from "../types";
 
 type Props = {
+  workspaceName: string;
+  onWorkspaceName: (name: string) => void;
+  onClose: () => void;
   groups: Group[];
   people: Person[];
   selectedId: string | null;
@@ -25,8 +28,19 @@ export default function SidePanel(props: Props) {
   return (
     <aside className="panel">
       <header className="panel-head">
-        <h1>Circles</h1>
-        <p>Friend-group overlap. Shared groups pull people closer and brighten their link.</p>
+        <div className="panel-nav">
+          <button type="button" onClick={props.onClose}>
+            Workspaces
+          </button>
+        </div>
+        <input
+          className="workspace-name"
+          type="text"
+          value={props.workspaceName}
+          onChange={(e) => props.onWorkspaceName(e.target.value)}
+          aria-label="Workspace name"
+        />
+        <p>Add groups and people on this canvas. Scroll or use the zoom controls to look around.</p>
       </header>
       <div className="panel-scroll">
         <div className="section-title">Groups</div>

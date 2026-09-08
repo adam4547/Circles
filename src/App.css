@@ -5,6 +5,146 @@
   min-height: 0;
 }
 
+.home {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 32px;
+  background:
+    radial-gradient(1200px 800px at 30% 20%, #162033 0%, transparent 55%),
+    #0e1218;
+}
+
+.home-card {
+  width: min(640px, 100%);
+}
+
+.home-card h1 {
+  margin: 0;
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.home-card > p {
+  margin: 10px 0 0;
+  max-width: 46ch;
+  color: #8b97ab;
+}
+
+.home-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+button.primary {
+  color: #0e1218;
+  background: #5b8def;
+  border-color: #5b8def;
+  font-weight: 600;
+}
+
+button.primary:hover {
+  background: #6b9af5;
+}
+
+.home-error,
+.save-error {
+  margin: 14px 0 0;
+  color: #f0b4b8;
+  font-size: 13px;
+}
+
+.save-error {
+  position: absolute;
+  left: 18px;
+  bottom: 40px;
+}
+
+.home-empty {
+  margin-top: 28px;
+  color: #6f7c90;
+}
+
+.recent-list {
+  margin-top: 28px;
+}
+
+.recent-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.recent-open {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+  padding: 10px 12px;
+}
+
+.recent-open span,
+.recent-open em {
+  font-size: 12px;
+  font-style: normal;
+  color: #8b97ab;
+}
+
+.recent-open em {
+  overflow: hidden;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.canvas-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.zoom-ui {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 1;
+}
+
+.zoom-ui button {
+  min-width: 36px;
+}
+
+.zoom-label {
+  margin-left: 4px;
+  font-size: 12px;
+  color: #8b97ab;
+}
+
+.panel-nav {
+  margin-bottom: 10px;
+}
+
+.workspace-name {
+  width: 100%;
+  padding: 4px 0;
+  color: inherit;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
 .stage {
   position: relative;
   min-width: 0;
