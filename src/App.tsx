@@ -187,10 +187,22 @@ export default function App() {
     const name = newGroupName.trim();
     if (!name) return;
     const id = crypto.randomUUID();
-    setGroups((prev) => [
-      ...prev,
-      { id, name, color: newGroupColor, x: 700, y: 400, r: 130 },
-    ]);
+    setGroups((prev) => {
+      // Fan new groups out around the middle so they don't pile onto one spot.
+      const angle = prev.length * 2.39996 - Math.PI / 2;
+      const radius = prev.length === 0 ? 0 : 200 + 18 * Math.floor(prev.length / 5);
+      return [
+        ...prev,
+        {
+          id,
+          name,
+          color: newGroupColor,
+          x: Math.round(700 + Math.cos(angle) * radius),
+          y: Math.round(410 + Math.sin(angle) * radius),
+          r: 44,
+        },
+      ];
+    });
     setNewGroupName("");
     setNewGroupColor(GROUP_COLORS[groups.length % GROUP_COLORS.length]);
   }
@@ -244,13 +256,11 @@ export default function App() {
           onMoveGroup={(id, x, y) =>
             setGroups((prev) => prev.map((g) => (g.id === id ? { ...g, x, y } : g)))
           }
-          onResizeGroup={(id, r) =>
-            setGroups((prev) => prev.map((g) => (g.id === id ? { ...g, r } : g)))
-          }
         />
         <p className="hint">
-          Scroll to zoom. Drag empty space to pan. Drag a circle to move it. Drag the rim
-          handle to resize.
+          People who share more groups sit closer; the ring around each dot shows their groups.
+          Hover or click a person to see their ties, then hover another to compare the pair. Drag a
+          group to move it.
         </p>
         {error ? <p className="save-error">{error}</p> : null}
       </main>

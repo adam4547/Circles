@@ -1,67 +1,7 @@
 import type { Point } from "./types";
 
-export type CircleGeom = {
-  x: number;
-  y: number;
-  r: number;
-};
-
 export function dist(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
-}
-
-/** Iteratively find a point inside `inside` circles and outside `outside` circles. */
-export function findRegionAnchor(
-  inside: CircleGeom[],
-  outside: CircleGeom[],
-  padding = 22,
-): Point {
-  let x = inside.reduce((sum, c) => sum + c.x, 0) / inside.length;
-  let y = inside.reduce((sum, c) => sum + c.y, 0) / inside.length;
-
-  for (let step = 0; step < 90; step++) {
-    let dx = 0;
-    let dy = 0;
-
-    for (const c of inside) {
-      const d = Math.hypot(x - c.x, y - c.y) || 0.001;
-      const limit = Math.max(c.r - padding, 10);
-      if (d > limit) {
-        const pull = (d - limit) / d;
-        dx += (c.x - x) * pull;
-        dy += (c.y - y) * pull;
-      }
-    }
-
-    for (const c of outside) {
-      const d = Math.hypot(x - c.x, y - c.y) || 0.001;
-      const limit = c.r + padding;
-      if (d < limit) {
-        const push = (limit - d) / d;
-        dx += (x - c.x) * push;
-        dy += (y - c.y) * push;
-      }
-    }
-
-    x += dx * 0.35;
-    y += dy * 0.35;
-  }
-
-  return { x, y };
-}
-
-export function clusterOffsets(count: number, radius: number): Point[] {
-  if (count <= 1) return [{ x: 0, y: 0 }];
-  const golden = Math.PI * (3 - Math.sqrt(5));
-  return Array.from({ length: count }, (_, i) => {
-    const r = radius * Math.sqrt((i + 0.5) / count);
-    const a = i * golden;
-    return { x: Math.cos(a) * r, y: Math.sin(a) * r };
-  });
-}
-
-export function membershipKey(groupIds: string[]): string {
-  return [...groupIds].sort().join("|");
 }
 
 export function sharedGroupCount(a: string[], b: string[]): number {
@@ -72,4 +12,123 @@ export function sharedGroupCount(a: string[], b: string[]): number {
     if (set.has(id)) n += 1;
   }
   return n;
+}
+
+export function sharedGroupIds(a: string[], b: string[]): string[] {
+  if (a.length === 0 || b.length === 0) return [];
+  const set = new Set(a);
+  return b.filter((id) => set.has(id));
+}
+
+function cross(o: Point, a: Point, b: Point): number {
+  return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+}
+
+export function convexHull(points: Point[]): Point[] {
+  if (points.length <= 1) return points.slice();
+  const pts = [...points].sort((p, q) => p.x - q.x || p.y - q.y);
+  const lower: Point[] = [];
+  for (const p of pts) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) {
+      lower.pop();
+    }
+    lower.push(p);
+  }
+  const upper: Point[] = [];
+  for (let i = pts.length - 1; i >= 0; i--) {
+    const p = pts[i];
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) {
+      upper.pop();
+    }
+    upper.push(p);
+  }
+  lower.pop();
+  upper.pop();
+  return lower.concat(upper);
+}
+
+/** Convex hull expanded around members so the region hugs people instead of filling a disk. */
+export function paddedHull(points: Point[], padding: number): Point[] {
+  if (points.length === 0) return [];
+  const ring: Point[] = [];
+  const steps = 8;
+  for (const p of points) {
+    for (let i = 0; i < steps; i++) {
+      const a = (Math.PI * 2 * i) / steps;
+      ring.push({ x: p.x + Math.cos(a) * padding, y: p.y + Math.sin(a) * padding });
+    }
+  }
+  return convexHull(ring);
+}
+
+export function hullPath(points: Point[]): string {
+  if (points.length === 0) return "";
+  if (points.length === 1) {
+    const p = points[0];
+    return `M ${p.x} ${p.y}`;
+  }
+  return `M ${points.map((p) => `${p.x} ${p.y}`).join(" L ")} Z`;
+}
+
+export function hullCentroid(points: Point[]): Point {
+  if (points.length === 0) return { x: 0, y: 0 };
+  const s = points.reduce(
+    (acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }),
+    { x: 0, y: 0 },
+  );
+  return { x: s.x / points.length, y: s.y / points.length };
+}
+
+/** Rest length for a pair: more shared groups → they sit closer. */
+export function restDistance(shared: number): number {
+  if (shared <= 0) return 160;
+  return 48 + 44 / shared;
+}
+
+/** SVG path for a ring split into equal arcs, one per entry in `count`. */
+export function ringSegmentPath(
+  cx: number,
+  cy: number,
+  r: number,
+  index: number,
+  count: number,
+  gap = 0.18,
+): string {
+  if (count <= 1) {
+    return `M ${cx + r} ${cy} A ${r} ${r} 0 1 1 ${cx - r} ${cy} A ${r} ${r} 0 1 1 ${cx + r} ${cy}`;
+  }
+  const span = (Math.PI * 2) / count;
+  const start = -Math.PI / 2 + index * span + gap / 2;
+  const end = start + span - gap;
+  const x0 = cx + Math.cos(start) * r;
+  const y0 = cy + Math.sin(start) * r;
+  const x1 = cx + Math.cos(end) * r;
+  const y1 = cy + Math.sin(end) * r;
+  const large = span - gap > Math.PI ? 1 : 0;
+  return `M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1}`;
+}
+
+/**
+ * Where to hang a region's label: the hull vertex farthest from `center` (the crowd's middle),
+ * nudged outward, so labels land on the quiet edge of the map rather than inside other clusters.
+ */
+export function hullLabelAnchor(
+  points: Point[],
+  center: Point,
+  offset: number,
+): { x: number; y: number; dx: number; dy: number } {
+  if (points.length === 0) return { x: center.x, y: center.y, dx: 0, dy: -1 };
+  let best = points[0];
+  let bestD = -1;
+  for (const p of points) {
+    const d = dist(p, center);
+    if (d > bestD) {
+      bestD = d;
+      best = p;
+    }
+  }
+  const len = Math.max(bestD, 0.001);
+  const dx = (best.x - center.x) / len;
+  const dy = (best.y - center.y) / len;
+  return { x: best.x + dx * offset, y: best.y + dy * offset, dx, dy };
 }

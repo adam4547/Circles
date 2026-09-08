@@ -1,3 +1,4 @@
+import { sharedGroupCount } from "../geometry";
 import type { Group, Person } from "../types";
 
 type Props = {
@@ -25,6 +26,7 @@ type Props = {
 };
 
 export default function SidePanel(props: Props) {
+  const selected = props.people.find((p) => p.id === props.selectedId);
   return (
     <aside className="panel">
       <header className="panel-head">
@@ -40,7 +42,10 @@ export default function SidePanel(props: Props) {
           onChange={(e) => props.onWorkspaceName(e.target.value)}
           aria-label="Workspace name"
         />
-        <p>Add groups and people on this canvas. Scroll or use the zoom controls to look around.</p>
+        <p>
+          Each dot's ring shows its groups; closer dots share more of them. Select someone, then
+          hover another person to see what the two share.
+        </p>
       </header>
       <div className="panel-scroll">
         <div className="section-title">Groups</div>
@@ -105,7 +110,12 @@ export default function SidePanel(props: Props) {
           />
           <button type="submit">Add</button>
         </form>
-        {props.people.map((person) => (
+        {props.people.map((person) => {
+          const shared =
+            selected && selected.id !== person.id
+              ? sharedGroupCount(selected.groupIds, person.groupIds)
+              : 0;
+          return (
           <div
             key={person.id}
             className={person.id === props.selectedId ? "card selected" : "card"}
@@ -129,6 +139,11 @@ export default function SidePanel(props: Props) {
                 Delete
               </button>
             </div>
+            {shared > 0 ? (
+              <p className="shared-note">
+                {shared} shared group{shared === 1 ? "" : "s"} with {selected?.name}
+              </p>
+            ) : null}
             <div className="chips">
               {props.groups.map((group) => {
                 const on = person.groupIds.includes(group.id);
@@ -153,7 +168,8 @@ export default function SidePanel(props: Props) {
               })}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </aside>
   );
