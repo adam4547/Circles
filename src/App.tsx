@@ -2,10 +2,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import CanvasStage from "./components/CanvasStage";
 import HomeScreen from "./components/HomeScreen";
 import SidePanel from "./components/SidePanel";
-import { sharedGroupCount } from "./geometry";
+import { exampleData, GROUP_COLORS } from "./example";
+import { sharedGroupCount, unionGroupCount } from "./geometry";
 import { layoutPeople } from "./layout";
-import { GROUP_COLORS } from "./seed";
-import type { Group, Person, RecentWorkspace, ViewTransform, Workspace } from "./types";
+import type {
+  EdgeWeighting,
+  Group,
+  Person,
+  RecentWorkspace,
+  ViewTransform,
+  Workspace,
+} from "./types";
 import {
   createWorkspace as createWorkspaceFile,
   deleteWorkspace,
@@ -46,6 +53,8 @@ export default function App() {
   const [people, setPeople] = useState<Person[]>([]);
   const [view, setView] = useState<ViewTransform>({ x: 0, y: 0, k: 1 });
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // View-only preference; not written to the workspace file, so it resets to raw on open.
+  const [weighting, setWeighting] = useState<EdgeWeighting>("raw");
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupColor, setNewGroupColor] = useState(GROUP_COLORS[0]);
   const [newPersonName, setNewPersonName] = useState("");
@@ -71,7 +80,8 @@ export default function App() {
     setFilePath(file);
     setWorkspaceId(workspace.id);
     setWorkspaceName(workspace.name);
-    setGroups(workspace.groups);
+    // Older files carried a dead `r` radius; keep only the fields the app uses.
+    setGroups(workspace.groups.map(({ id, name, color, x, y }) => ({ id, name, color, x, y })));
     setPeople(workspace.people);
     setView(workspace.view ?? { x: 0, y: 0, k: 1 });
     setSelectedId(null);
@@ -118,12 +128,17 @@ export default function App() {
   );
 
   const edges = useMemo(() => {
-    const list: { a: string; b: string; shared: number }[] = [];
+    const list: { a: string; b: string; shared: number; union: number }[] = [];
     for (let i = 0; i < people.length; i++) {
       for (let j = i + 1; j < people.length; j++) {
         const shared = sharedGroupCount(people[i].groupIds, people[j].groupIds);
         if (shared > 0) {
-          list.push({ a: people[i].id, b: people[j].id, shared });
+          list.push({
+            a: people[i].id,
+            b: people[j].id,
+            shared,
+            union: unionGroupCount(people[i].groupIds, people[j].groupIds),
+          });
         }
       }
     }
@@ -199,7 +214,6 @@ export default function App() {
           color: newGroupColor,
           x: Math.round(700 + Math.cos(angle) * radius),
           y: Math.round(410 + Math.sin(angle) * radius),
-          r: 44,
         },
       ];
     });
@@ -212,6 +226,14 @@ export default function App() {
     if (!name) return;
     setPeople((prev) => [...prev, { id: crypto.randomUUID(), name, groupIds: [] }]);
     setNewPersonName("");
+  }
+
+  function loadExample() {
+    if (groups.length > 0 || people.length > 0) return;
+    const example = exampleData();
+    setGroups(example.groups);
+    setPeople(example.people);
+    setSelectedId(null);
   }
 
   if (!open) {
@@ -251,6 +273,8 @@ export default function App() {
           edges={edges}
           selectedId={selectedId}
           view={view}
+          weighting={weighting}
+          onToggleWeighting={() => setWeighting((w) => (w === "raw" ? "jaccard" : "raw"))}
           onViewChange={setView}
           onSelectPerson={setSelectedId}
           onMoveGroup={(id, x, y) =>
@@ -279,6 +303,7 @@ export default function App() {
         onNewPersonName={setNewPersonName}
         onAddGroup={addGroup}
         onAddPerson={addPerson}
+        onLoadExample={loadExample}
         onRenameGroup={(id, name) =>
           setGroups((prev) => prev.map((g) => (g.id === id ? { ...g, name } : g)))
         }

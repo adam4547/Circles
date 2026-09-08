@@ -1,4 +1,4 @@
-import type { Point } from "./types";
+import type { EdgeWeighting, Point } from "./types";
 
 export function dist(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
@@ -18,6 +18,49 @@ export function sharedGroupIds(a: string[], b: string[]): string[] {
   if (a.length === 0 || b.length === 0) return [];
   const set = new Set(a);
   return b.filter((id) => set.has(id));
+}
+
+/** Size of the union of two people's group sets. */
+export function unionGroupCount(a: string[], b: string[]): number {
+  return new Set([...a, ...b]).size;
+}
+
+/** Jaccard similarity: shared / union. 0 when either person has no groups. */
+export function jaccard(shared: number, union: number): number {
+  return union === 0 ? 0 : shared / union;
+}
+
+export type EdgeScore = {
+  /** 0..1, drives stroke width and opacity. */
+  strength: number;
+  /** Strong enough to draw a string when nobody is focused. */
+  showAtRest: boolean;
+  /** Strong enough to carry a count badge when nobody is focused. */
+  badgeAtRest: boolean;
+  /** Text for the badge: shared count, or overlap percentage when normalized. */
+  label: string;
+};
+
+/**
+ * One place that decides how heavy a tie looks. Raw mode counts shared circles;
+ * normalized mode uses Jaccard so a shared 4-person chat outweighs a shared 200-person school.
+ */
+export function scoreEdge(shared: number, union: number, weighting: EdgeWeighting): EdgeScore {
+  if (weighting === "jaccard") {
+    const j = jaccard(shared, union);
+    return {
+      strength: j,
+      showAtRest: j >= 0.5,
+      badgeAtRest: j >= 0.75,
+      label: `${Math.round(j * 100)}`,
+    };
+  }
+  return {
+    strength: Math.min((shared - 1) / 3, 1),
+    showAtRest: shared >= 2,
+    badgeAtRest: shared >= 3,
+    label: `${shared}`,
+  };
 }
 
 function cross(o: Point, a: Point, b: Point): number {

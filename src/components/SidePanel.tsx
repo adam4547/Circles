@@ -16,6 +16,7 @@ type Props = {
   onNewPersonName: (value: string) => void;
   onAddGroup: () => void;
   onAddPerson: () => void;
+  onLoadExample: () => void;
   onRenameGroup: (id: string, name: string) => void;
   onRecolorGroup: (id: string, color: string) => void;
   onDeleteGroup: (id: string) => void;
@@ -27,6 +28,7 @@ type Props = {
 
 export default function SidePanel(props: Props) {
   const selected = props.people.find((p) => p.id === props.selectedId);
+  const empty = props.groups.length === 0 && props.people.length === 0;
   return (
     <aside className="panel">
       <header className="panel-head">
@@ -34,6 +36,11 @@ export default function SidePanel(props: Props) {
           <button type="button" onClick={props.onClose}>
             Workspaces
           </button>
+          {empty ? (
+            <button type="button" onClick={props.onLoadExample}>
+              Load example data
+            </button>
+          ) : null}
         </div>
         <input
           className="workspace-name"

@@ -4,12 +4,15 @@ import {
   dist,
   hullLabelAnchor,
   hullPath,
+  jaccard,
   paddedHull,
   ringSegmentPath,
+  scoreEdge,
   sharedGroupCount,
   sharedGroupIds,
+  unionGroupCount,
 } from "../geometry";
-import type { Group, ViewTransform } from "../types";
+import type { EdgeWeighting, Group, ViewTransform } from "../types";
 
 function shortName(name: string): string {
   const parts = name.trim().split(/\s+/);
@@ -33,6 +36,7 @@ type Edge = {
   a: string;
   b: string;
   shared: number;
+  union: number;
 };
 
 type GroupLabel = {
@@ -47,6 +51,8 @@ type Props = {
   edges: Edge[];
   selectedId: string | null;
   view: ViewTransform;
+  weighting: EdgeWeighting;
+  onToggleWeighting: () => void;
   onViewChange: (view: ViewTransform) => void;
   onSelectPerson: (id: string | null) => void;
   onMoveGroup: (id: string, x: number, y: number) => void;
@@ -63,6 +69,8 @@ export default function CanvasStage({
   edges,
   selectedId,
   view,
+  weighting,
+  onToggleWeighting,
   onViewChange,
   onSelectPerson,
   onMoveGroup,
@@ -130,20 +138,23 @@ export default function CanvasStage({
   const pairShared =
     selectedPerson && pairPerson ? sharedGroupIds(selectedPerson.groupIds, pairPerson.groupIds) : [];
 
-  // Quiet by default: only strong ties (2+ shared groups) get a string. Focus a person to see all of theirs.
+  // Quiet by default: only strong ties get a string. Focus a person to see all of theirs.
   const visibleEdges = useMemo(() => {
     const isPair = (edge: Edge) =>
       Boolean(pairId) &&
       ((edge.a === selectedId && edge.b === pairId) || (edge.b === selectedId && edge.a === pairId));
     return edges
+      .map((edge) => ({ ...edge, score: scoreEdge(edge.shared, edge.union, weighting) }))
       .filter((edge) => {
         if (!pos.has(edge.a) || !pos.has(edge.b)) return false;
         if (focusId) return edge.a === focusId || edge.b === focusId || isPair(edge);
-        return edge.shared >= 2;
+        return edge.score.showAtRest;
       })
       // Weak ties first, the hovered pair last, so the important string is drawn on top.
-      .sort((p, q) => Number(isPair(p)) - Number(isPair(q)) || p.shared - q.shared);
-  }, [edges, pos, focusId, pairId, selectedId]);
+      .sort(
+        (p, q) => Number(isPair(p)) - Number(isPair(q)) || p.score.strength - q.score.strength,
+      );
+  }, [edges, pos, focusId, pairId, selectedId, weighting]);
 
   useEffect(() => {
     const svg = svgRef.current;
@@ -243,8 +254,8 @@ export default function CanvasStage({
     const pairHit =
       Boolean(pairId) &&
       ((edge.a === selectedId && edge.b === pairId) || (edge.b === selectedId && edge.a === pairId));
-    const strong = edge.shared >= 2;
-    const t = Math.min((edge.shared - 1) / 3, 1);
+    const strong = edge.score.showAtRest;
+    const t = edge.score.strength;
     const color = pairHit ? "#f4d38a" : strong ? "#9eb6ff" : "#7f92b3";
     const width = pairHit ? 3.2 : strong ? 1.8 + t * 1.8 : 1.2;
     const opacity = pairHit ? 0.95 : focusId ? 0.55 + t * 0.35 : 0.42 + t * 0.35;
@@ -262,13 +273,13 @@ export default function CanvasStage({
     const mx = (a.x + b.x) / 2 + px * off;
     const my = (a.y + b.y) / 2 + py * off;
     // Counts appear when you focus someone; at rest only the tightest bonds carry a number.
-    const showCount = Boolean(focusId) || edge.shared >= 3;
+    const showCount = Boolean(focusId) || edge.score.badgeAtRest;
     return [
       {
         key: `${edge.a}-${edge.b}`,
         a,
         b,
-        shared: edge.shared,
+        label: edge.score.label,
         pairHit,
         color,
         width,
@@ -291,17 +302,23 @@ export default function CanvasStage({
   );
   const spotlight = highlightedGroups.size > 0;
 
+  // "Closest" follows the active weighting: most shared circles, or highest Jaccard overlap.
   const closest =
     selectedPerson
       ? people
           .filter((p) => p.id !== selectedPerson.id)
-          .map((p) => ({
-            person: p,
-            shared: sharedGroupCount(selectedPerson.groupIds, p.groupIds),
-            d: dist(selectedPerson, p),
-          }))
+          .map((p) => {
+            const shared = sharedGroupCount(selectedPerson.groupIds, p.groupIds);
+            const union = unionGroupCount(selectedPerson.groupIds, p.groupIds);
+            return {
+              person: p,
+              shared,
+              score: weighting === "jaccard" ? jaccard(shared, union) : shared,
+              d: dist(selectedPerson, p),
+            };
+          })
           .filter((item) => item.shared > 0)
-          .sort((a, b) => b.shared - a.shared || a.d - b.d)[0]
+          .sort((a, b) => b.score - a.score || a.d - b.d)[0]
       : undefined;
 
   let footnote: string | null = null;
@@ -314,7 +331,11 @@ export default function CanvasStage({
         ? `${shortName(selectedPerson.name)} & ${shortName(pairPerson.name)} share ${names.join(", ")}`
         : `${shortName(selectedPerson.name)} & ${shortName(pairPerson.name)} share no groups`;
   } else if (selectedPerson && closest) {
-    footnote = `Closest to ${shortName(selectedPerson.name)}: ${shortName(closest.person.name)} · ${closest.shared} shared group${closest.shared === 1 ? "" : "s"}`;
+    const measure =
+      weighting === "jaccard"
+        ? `${Math.round(closest.score * 100)}% overlap`
+        : `${closest.shared} shared group${closest.shared === 1 ? "" : "s"}`;
+    footnote = `Closest to ${shortName(selectedPerson.name)}: ${shortName(closest.person.name)} · ${measure}`;
   } else if (selectedPerson) {
     footnote = `${shortName(selectedPerson.name)} shares no groups with anyone yet`;
   }
@@ -435,7 +456,7 @@ export default function CanvasStage({
                 <circle
                   cx={edge.mx}
                   cy={edge.my}
-                  r={8.5}
+                  r={edge.label.length > 2 ? 11 : 8.5}
                   fill="#0e1218"
                   stroke={edge.color}
                   strokeWidth={1}
@@ -448,7 +469,7 @@ export default function CanvasStage({
                   textAnchor="middle"
                   fill={edge.pairHit ? "#f4d38a" : "#d7e4ff"}
                 >
-                  {edge.shared}
+                  {edge.label}
                 </text>
               </g>
             ))}
@@ -471,6 +492,16 @@ export default function CanvasStage({
           Fit
         </button>
         <span className="zoom-label">{zoomPercent}%</span>
+        <span className="divider" />
+        <button
+          type="button"
+          className={weighting === "jaccard" ? "on" : undefined}
+          aria-pressed={weighting === "jaccard"}
+          title="Weight ties by shared ÷ combined circles (Jaccard) instead of raw shared count"
+          onClick={onToggleWeighting}
+        >
+          Normalize
+        </button>
       </div>
     </div>
   );

@@ -1,11 +1,14 @@
+/** A circle. `x`/`y` is its anchor point: where members are pulled toward and what you drag. */
 export type Group = {
   id: string;
   name: string;
   color: string;
   x: number;
   y: number;
-  r: number;
 };
+
+/** How ties between two people are scored. Raw = shared circles; Jaccard = shared / union of both people's circles. */
+export type EdgeWeighting = "raw" | "jaccard";
 
 export type Person = {
   id: string;

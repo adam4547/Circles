@@ -19,10 +19,11 @@ Windows may show a SmartScreen prompt the first time because the file is not a s
 - **New workspace:** pick a folder and file name in the save dialog. That file is your workspace. The canvas starts empty.
 - **Open file:** choose an existing `.circles.json` (or `.json`) workspace.
 - **Recent:** reopen a workspace you used before. Hide removes it from the list; Delete file removes it from disk.
-- **Move a group:** drag inside a colored circle.
-- **Resize a group:** drag the small handle on the lower-right rim of a circle.
+- **Move a group:** drag inside a group's shaded region. Groups have no fixed size; the region wraps whoever belongs to it.
 - **Look around:** scroll to zoom, drag empty space to pan, or use **+ / − / 100% / Fit**.
+- **Normalize:** toggles how ties are weighted. Off, a line's weight is the raw number of shared groups. On, it is shared ÷ combined groups (Jaccard), so sharing a small group chat counts for more than sharing a large school. Affects line thickness, count badges (shown as a percentage), and "Closest to".
 - **See how connected someone is:** click a person on the canvas or in the side panel. Their shared-group lines stay bright; others fade.
+- **Load example data:** on an empty workspace, the side panel offers a sample set of groups and people to explore.
 - **Add a group:** type a name, pick a color, click **Add**.
 - **Add a person:** type a name, click **Add**. New people start with no groups and appear in the upper-left until you assign groups.
 - **Edit names or colors:** use the fields in the side panel.

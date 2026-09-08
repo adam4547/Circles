@@ -130,7 +130,23 @@ button.primary:hover {
 }
 
 .panel-nav {
+  display: flex;
+  gap: 8px;
   margin-bottom: 10px;
+}
+
+.zoom-ui .divider {
+  width: 1px;
+  height: 22px;
+  margin: 0 4px;
+  background: #334766;
+}
+
+.zoom-ui button.on {
+  color: #0e1218;
+  background: #9eb6ff;
+  border-color: #9eb6ff;
+  font-weight: 600;
 }
 
 .workspace-name {

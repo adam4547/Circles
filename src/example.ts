@@ -1,6 +1,6 @@
 import type { Group, Person } from "./types";
 
-const palette = [
+export const GROUP_COLORS = [
   "#5b8def",
   "#e06c75",
   "#98c379",
@@ -14,25 +14,25 @@ const palette = [
   "#ffa657",
 ];
 
-export const seedGroups: Group[] = [
-  { id: "g-wef", name: "World Economic Forum", color: palette[0], x: 980, y: 170, r: 130 },
-  { id: "g-elsmosh", name: "ElSmosh", color: palette[1], x: 380, y: 250, r: 155 },
-  { id: "g-cantina", name: "Cantina", color: palette[2], x: 720, y: 290, r: 145 },
-  { id: "g-dbrx", name: "DBRX", color: palette[3], x: 1040, y: 390, r: 140 },
-  { id: "g-boys", name: "The Boys", color: palette[4], x: 560, y: 420, r: 210 },
-  { id: "g-crooms", name: "Crooms High School", color: palette[5], x: 250, y: 500, r: 165 },
-  { id: "g-greenwood", name: "Greenwood Middle School", color: palette[6], x: 160, y: 260, r: 125 },
-  { id: "g-sanford", name: "Sanford Middle School", color: palette[7], x: 860, y: 560, r: 120 },
-  { id: "g-markham", name: "Markham Middle School", color: palette[8], x: 430, y: 640, r: 120 },
-  { id: "g-uf", name: "University of Florida", color: palette[9], x: 1160, y: 560, r: 155 },
-  { id: "g-ucf", name: "University of Central Florida", color: palette[10], x: 780, y: 150, r: 145 },
+const exampleGroups: Group[] = [
+  { id: "g-wef", name: "World Economic Forum", color: GROUP_COLORS[0], x: 980, y: 170 },
+  { id: "g-elsmosh", name: "ElSmosh", color: GROUP_COLORS[1], x: 380, y: 250 },
+  { id: "g-cantina", name: "Cantina", color: GROUP_COLORS[2], x: 720, y: 290 },
+  { id: "g-dbrx", name: "DBRX", color: GROUP_COLORS[3], x: 1040, y: 390 },
+  { id: "g-boys", name: "The Boys", color: GROUP_COLORS[4], x: 560, y: 420 },
+  { id: "g-crooms", name: "Crooms High School", color: GROUP_COLORS[5], x: 250, y: 500 },
+  { id: "g-greenwood", name: "Greenwood Middle School", color: GROUP_COLORS[6], x: 160, y: 260 },
+  { id: "g-sanford", name: "Sanford Middle School", color: GROUP_COLORS[7], x: 860, y: 560 },
+  { id: "g-markham", name: "Markham Middle School", color: GROUP_COLORS[8], x: 430, y: 640 },
+  { id: "g-uf", name: "University of Florida", color: GROUP_COLORS[9], x: 1160, y: 560 },
+  { id: "g-ucf", name: "University of Central Florida", color: GROUP_COLORS[10], x: 780, y: 150 },
 ];
 
 function p(id: string, name: string, groupIds: string[]): Person {
   return { id, name, groupIds };
 }
 
-export const seedPeople: Person[] = [
+const examplePeople: Person[] = [
   p("p-adam", "Adam Posey", ["g-boys", "g-elsmosh", "g-crooms", "g-greenwood", "g-uf", "g-wef", "g-dbrx"]),
   p("p-alex", "Alex Barrass", ["g-boys", "g-elsmosh", "g-crooms", "g-greenwood", "g-ucf"]),
   p("p-ryan", "Ryan Parker", ["g-boys", "g-cantina", "g-crooms", "g-greenwood", "g-ucf"]),
@@ -52,4 +52,10 @@ export const seedPeople: Person[] = [
   p("p-braedan", "Braedan Stewart", ["g-wef"]),
 ];
 
-export const GROUP_COLORS = palette;
+/** Fresh copies each call so an example loaded into a workspace can be edited freely. */
+export function exampleData(): { groups: Group[]; people: Person[] } {
+  return {
+    groups: exampleGroups.map((g) => ({ ...g })),
+    people: examplePeople.map((person) => ({ ...person, groupIds: [...person.groupIds] })),
+  };
+}
